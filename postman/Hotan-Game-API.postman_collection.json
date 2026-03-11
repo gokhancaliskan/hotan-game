@@ -1,0 +1,337 @@
+{
+  "info": {
+    "name": "Hotan Game API",
+    "_postman_id": "hotan-game-api-collection",
+    "description": "Hotan Game Backend API - NestJS\n\nBase URL: http://localhost:3000/api\nWebSocket: ws://localhost:3000/chat\n\n## Authentication\nMost endpoints require a Bearer JWT token. Use the /auth/login or /auth/register endpoints to get a token, then set it in the collection variables.\n\n## WebSocket Events\nWebSocket events (send_message, edit_message, delete_message, ban_user) require Socket.IO connection to ws://localhost:3000/chat with token in handshake auth.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Authentication endpoints (Public - no token required)",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Register a new user.\n\n**Body:**\n- `username` (string, required)\n- `email` (string, required, valid email)\n- `password` (string, required, min 6 chars)"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.access_token) {",
+                  "        pm.collectionVariables.set('token', jsonData.access_token);",
+                  "    }",
+                  "    if (jsonData.user && jsonData.user.id) {",
+                  "        pm.collectionVariables.set('userId', jsonData.user.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login with existing credentials.\n\n**Body:**\n- `username` (string, required)\n- `password` (string, required)"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.access_token) {",
+                  "        pm.collectionVariables.set('token', jsonData.access_token);",
+                  "    }",
+                  "    if (jsonData.user && jsonData.user.id) {",
+                  "        pm.collectionVariables.set('userId', jsonData.user.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "description": "Chat endpoints (REST + WebSocket)\n\nREST endpoint is public. WebSocket events require JWT token.",
+      "item": [
+        {
+          "name": "Get Messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/chat/messages?limit=50&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "messages"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Number of messages to retrieve (default: 50)"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Offset for pagination (default: 0)"
+                }
+              ]
+            },
+            "description": "Get chat messages (Public - no auth required).\n\n**Query Parameters:**\n- `limit` (number, optional, default: 50)\n- `offset` (number, optional, default: 0)"
+          },
+          "response": []
+        },
+        {
+          "name": "📡 WebSocket - send_message",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "ws://localhost:3000/chat",
+              "protocol": "ws",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["chat"]
+            },
+            "description": "⚡ **WebSocket Event** — Use Socket.IO client, not HTTP.\n\n**Connection:**\n```javascript\nconst socket = io('ws://localhost:3000/chat', {\n  auth: { token: 'YOUR_JWT_TOKEN' }\n});\n```\n\n**Emit:**\n```javascript\nsocket.emit('send_message', { message: 'Hello world!' });\n```\n\n**Listen:**\n```javascript\nsocket.on('receive_message', (data) => console.log(data));\n```\n\n**Payload:**\n- `message` (string, required) — The chat message text\n\n**Requires:** Authenticated socket (USER or ADMIN role), not banned"
+          },
+          "response": []
+        },
+        {
+          "name": "📡 WebSocket - edit_message",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "ws://localhost:3000/chat",
+              "protocol": "ws",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["chat"]
+            },
+            "description": "⚡ **WebSocket Event** — Use Socket.IO client, not HTTP.\n\n**Emit:**\n```javascript\nsocket.emit('edit_message', {\n  messageId: 'uuid-here',\n  message: 'Updated message text'\n});\n```\n\n**Listen:**\n```javascript\nsocket.on('message_edited', (data) => console.log(data));\n```\n\n**Payload:**\n- `messageId` (string, required) — UUID of message to edit\n- `message` (string, required) — New message text\n\n**Requires:** Authenticated socket. Users can edit own messages, admins can edit any."
+          },
+          "response": []
+        },
+        {
+          "name": "📡 WebSocket - delete_message",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "ws://localhost:3000/chat",
+              "protocol": "ws",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["chat"]
+            },
+            "description": "⚡ **WebSocket Event** — Use Socket.IO client, not HTTP.\n\n**Emit:**\n```javascript\nsocket.emit('delete_message', {\n  messageId: 'uuid-here'\n});\n```\n\n**Listen:**\n```javascript\nsocket.on('message_deleted', (data) => console.log(data));\n```\n\n**Payload:**\n- `messageId` (string, required) — UUID of message to delete\n\n**Requires:** Authenticated socket. Users can delete own messages, admins can delete any."
+          },
+          "response": []
+        },
+        {
+          "name": "📡 WebSocket - ban_user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "ws://localhost:3000/chat",
+              "protocol": "ws",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["chat"]
+            },
+            "description": "⚡ **WebSocket Event** — Use Socket.IO client, not HTTP.\n\n**Emit:**\n```javascript\nsocket.emit('ban_user', {\n  userId: 'uuid-here'\n});\n```\n\n**Listen:**\n```javascript\nsocket.on('user_banned', (data) => console.log(data));\n```\n\n**Payload:**\n- `userId` (string, required) — UUID of user to ban from chat\n\n**Requires:** ADMIN role only"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "User management endpoints (Requires JWT Bearer token)",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Get all users.\n\n**Auth:** Bearer token required (Admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            },
+            "description": "Get a single user by UUID.\n\n**Auth:** Bearer token required (Admin only)\n\n**Path Parameters:**\n- `id` (UUID, required)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"updatedUsername\",\n  \"email\": \"updated@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            },
+            "description": "Update a user's details.\n\n**Auth:** Bearer token required (Admin only)\n\n**Body (all optional):**\n- `username` (string)\n- `email` (string, valid email)\n- `password` (string, min 6 chars)\n- `role` (enum: 'user' | 'admin')\n- `bannedFromChat` (boolean)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            },
+            "description": "Delete a user by UUID.\n\n**Auth:** Bearer token required (Admin only)\n\n**Path Parameters:**\n- `id` (UUID, required)"
+          },
+          "response": []
+        },
+        {
+          "name": "Ban User from Chat",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"banned\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/ban-chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "ban-chat"]
+            },
+            "description": "Ban or unban a user from chat.\n\n**Auth:** Bearer token required (Admin only)\n\n**Body:**\n- `banned` (boolean, required) — `true` to ban, `false` to unban"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
