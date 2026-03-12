@@ -67,30 +67,29 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /**
    * send_message → user/admin only, blocked if banned
    */
-  @SubscribeMessage('send_message')
+ @SubscribeMessage('send_message')
   async handleSendMessage(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: SendMessageDto,
+    @MessageBody() data: SendMessageDto, // Artık any değil, DTO!
   ) {
     if (!client.user) {
       return { event: 'error', data: { message: 'Authentication required' } };
     }
 
-    if (client.user.role !== Role.USER && client.user.role !== Role.ADMIN) {
-      return { event: 'error', data: { message: 'Insufficient permissions' } };
-    }
-
     try {
+      // DTO kullandığımız için artık 'data.message' direkt dolu gelmeli.
+      // Eğer Postman'den JSON gönderirsen ({"message": "..."}), data.message çalışır.
       const message = await this.chatService.createMessage(
         client.user.id,
         data.message,
       );
 
-      // Broadcast to everyone
+      // Herkese yayınla
       this.server.emit('receive_message', message);
 
       return { event: 'send_message', data: { success: true, message } };
     } catch (error) {
+      this.logger.error(`Mesaj gönderim hatası: ${error.message}`);
       return { event: 'error', data: { message: error.message } };
     }
   }
@@ -99,30 +98,34 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
    * edit_message → user edits own, admin edits any
    */
   @SubscribeMessage('edit_message')
-  async handleEditMessage(
-    @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: EditMessageDto,
-  ) {
-    if (!client.user) {
-      return { event: 'error', data: { message: 'Authentication required' } };
-    }
+async handleEditMessage(
+  @ConnectedSocket() client: AuthenticatedSocket,
+  @MessageBody() data: EditMessageDto, // DTO kalsın, bozma
+) {
+  // Eğer bu satır terminalde ÇIKMIYORSA, NestJS veriyi DTO'ya uygun bulmuyor demektir.
+  this.logger.log(`Edit denemesi: ${data.messageId}`); 
 
-    try {
-      const message = await this.chatService.editMessage(
-        data.messageId,
-        data.message,
-        client.user.id,
-        client.user.role as Role,
-      );
-
-      // Broadcast edited message to everyone
-      this.server.emit('message_edited', message);
-
-      return { event: 'edit_message', data: { success: true, message } };
-    } catch (error) {
-      return { event: 'error', data: { message: error.message } };
-    }
+  if (!client.user) {
+    return { event: 'error', data: 'Yetki yok' };
   }
+
+  try {
+    const message = await this.chatService.editMessage(
+      data.messageId,
+      data.message,
+      client.user.id,
+      client.user.role as Role,
+    );
+    
+    this.server.emit('message_edited', message);
+    return { event: 'edit_message', data: { success: true, message } };
+  } catch (error)
+  
+   {
+    this.logger.error(`Düzenleme hatası: ${error.message}`);
+    return { event: 'error', data: error.message };
+  }
+}
 
   /**
    * delete_message → user deletes own, admin deletes any

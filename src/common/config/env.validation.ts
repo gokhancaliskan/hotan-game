@@ -44,7 +44,20 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   JWT_SECRET: string;
+  // Admin Configuration
+  @IsString()
+  @IsNotEmpty()
+  DEFAULT_ADMIN_USER: string;
+
+  @IsString()
+  @IsNotEmpty()
+  DEFAULT_ADMIN_EMAIL: string;
+
+  @IsString()
+  @IsNotEmpty()
+  DEFAULT_ADMIN_PASS: string;
 }
+
 
 export function validate(config: Record<string, unknown>) {
   const validatedConfig = plainToInstance(EnvironmentVariables, config, {

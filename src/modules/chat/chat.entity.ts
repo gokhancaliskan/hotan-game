@@ -8,7 +8,6 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { UserEntity } from '../user/user.entity';
-import { IsOptional } from 'class-validator';
 
 @Entity('chat_messages')
 export class ChatMessage {
@@ -30,8 +29,4 @@ export class ChatMessage {
 
   @UpdateDateColumn()
   updatedAt: Date;
-
-  @IsOptional()
-  @Column()
-  number?: number;
 }
