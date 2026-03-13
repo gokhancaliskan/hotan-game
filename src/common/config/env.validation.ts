@@ -1,5 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import {
+  IsEmail,
   IsEnum,
   IsNotEmpty,
   IsNumber,
@@ -44,11 +45,25 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   JWT_SECRET: string;
+
+  // Default Admin User
+  @IsString()
+  @IsNotEmpty()
+  ADMIN_USERNAME: string;
+
+  @IsEmail()
+  @IsNotEmpty()
+  ADMIN_EMAIL: string;
+
+  @IsString()
+  @IsNotEmpty()
+  ADMIN_PASSWORD: string;
 }
 
 export function validate(config: Record<string, unknown>) {
   const validatedConfig = plainToInstance(EnvironmentVariables, config, {
     enableImplicitConversion: true,
+
   });
 
   const errors = validateSync(validatedConfig, {

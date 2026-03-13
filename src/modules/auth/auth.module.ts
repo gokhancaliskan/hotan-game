@@ -20,6 +20,7 @@ import { UserEntity } from '../user/user.entity';
         signOptions: { expiresIn: '7d' },
       }),
     }),
+    ConfigModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
